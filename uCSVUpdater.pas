@@ -2,9 +2,11 @@ unit uCSVUpdater;
 
 interface
 
-uses System.Classes, System.SysUtils, System.Generics;
+uses System.Classes, System.SysUtils, System.Types,
+     System.Generics.Defaults, System.Generics.Collections,
+     Functional.Value;
 
-type
+  type
 
   TCSVUpdater = class
     constructor Create(AFilename: string);
@@ -12,18 +14,20 @@ type
   private
     fFileName: string;
     fHeaders: TStringList;
+    fBody : TStringList;
+    fLastError: string;
     function getHeaders: string;
     procedure SetHeaders(const Value: string);
-    function LoadHeaders: boolean;
+    procedure LoadHeaders;
     function getRowByIndex(AIndex: integer): string;
     procedure setRowByIndex(AIndex: integer; const Value: string);
     function LocateRow(AIndex: integer): string;
+    function getRowByValue(AHeader: string; AValue: string): string;
+    procedure SetFilename(const Value: string);
   public
-    property Filename: string read fFileName write fFilename;
+    property Filename: string read fFileName write SetFilename;
     property Headers : string read getHeaders write SetHeaders;
-    property Row[AIndex: integer] : string read getRowbyIndex write setRowByIndex;
-    property Row[AHeader: string; AValue : Value<T>] read getRowByValue write setRowByValue;
-
+    property Row[AIndex : integer] : string read getRowbyIndex write setRowByIndex;
   end;
 
 implementation
@@ -32,21 +36,29 @@ implementation
 
 constructor TCSVUpdater.Create(AFilename: string);
 begin
-  self.fHeaders := TStringlist.Create;
+  fHeaders := TStringlist.Create;
+  fBody := TStringList;
 end;
 
 destructor TCSVUpdater.Destroy;
 begin
+  freeandNil(Self.fBody);
   freeandNil(self.fHeaders);
   inherited;
 end;
 
 function TCSVUpdater.getHeaders: string;
 begin
- result := '';
- if (fHeaders.Count=0) then if not(LoadHeaders) then
-   raise exception.Create('No headers found');
-
+  fLastError := '';
+  result := '';
+  if (fHeaders.Count=0) then
+  try
+   LoadHeaders;
+   result := self.fHeaders.Text;
+  Except
+   on e:exception do
+     fLastError := 'Could not load headers: '+ e.Message;
+  end;
 end;
 
 function TCSVUpdater.getRowByIndex(AIndex: integer): string;
@@ -54,8 +66,31 @@ begin
   result := LocateRow(AIndex);
 end;
 
-function TCSVUpdater.LoadHeaders: boolean;
+function TCSVUpdater.getRowByValue(AHeader, AValue: string): string;
 begin
+
+end;
+
+Procedure TCSVUpdater.LoadHeaders;
+var fStream : TFileStream;
+    lList : TStringlist;
+begin
+  if (fFileName<>'') and
+     (FileExists(fFilename,true)) then
+  begin
+    fStream := TFileStream.Create(fFilename, fmOpenRead or fmShareDenyNone);
+    lList := TStringlist;
+    try
+      lList.QuoteChar := '"';
+      lList.Delimiter := ',';
+      lList.LineBreak := #13#10;
+      lList.LoadFromStream(fStream);
+
+    finally
+      FreeAndNil(lList);
+      freeAndNil(FStream);
+    end;
+  end;
 
 end;
 
@@ -64,6 +99,11 @@ begin
   if (AIndex<1) then raise Exception.Create('Row must be >= 1');
 
 
+end;
+
+procedure TCSVUpdater.SetFilename(const Value: string);
+begin
+    fFileName := Value;
 end;
 
 procedure TCSVUpdater.SetHeaders(const Value: string);

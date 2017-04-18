@@ -1,0 +1,48 @@
+﻿<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+    <PropertyGroup>
+        <ProjectGuid>{FA930ADF-9D64-46A4-9745-3B87BF7ADE69}</ProjectGuid>
+    </PropertyGroup>
+    <ItemGroup>
+        <Projects Include="CSVUpdater.dproj">
+            <Dependencies/>
+        </Projects>
+        <Projects Include="CSVUpdaterTests.dproj">
+            <Dependencies/>
+        </Projects>
+    </ItemGroup>
+    <ProjectExtensions>
+        <Borland.Personality>Default.Personality.12</Borland.Personality>
+        <Borland.ProjectType/>
+        <BorlandProject>
+            <Default.Personality/>
+        </BorlandProject>
+    </ProjectExtensions>
+    <Target Name="CSVUpdater">
+        <MSBuild Projects="CSVUpdater.dproj"/>
+    </Target>
+    <Target Name="CSVUpdater:Clean">
+        <MSBuild Projects="CSVUpdater.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="CSVUpdater:Make">
+        <MSBuild Projects="CSVUpdater.dproj" Targets="Make"/>
+    </Target>
+    <Target Name="CSVUpdaterTests">
+        <MSBuild Projects="CSVUpdaterTests.dproj"/>
+    </Target>
+    <Target Name="CSVUpdaterTests:Clean">
+        <MSBuild Projects="CSVUpdaterTests.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="CSVUpdaterTests:Make">
+        <MSBuild Projects="CSVUpdaterTests.dproj" Targets="Make"/>
+    </Target>
+    <Target Name="Build">
+        <CallTarget Targets="CSVUpdater;CSVUpdaterTests"/>
+    </Target>
+    <Target Name="Clean">
+        <CallTarget Targets="CSVUpdater:Clean;CSVUpdaterTests:Clean"/>
+    </Target>
+    <Target Name="Make">
+        <CallTarget Targets="CSVUpdater:Make;CSVUpdaterTests:Make"/>
+    </Target>
+    <Import Project="$(BDS)\Bin\CodeGear.Group.Targets" Condition="Exists('$(BDS)\Bin\CodeGear.Group.Targets')"/>
+</Project>
