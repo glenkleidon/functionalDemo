@@ -6,7 +6,7 @@
         <Projects Include="CSVUpdater.dproj">
             <Dependencies/>
         </Projects>
-        <Projects Include="CSVUpdaterTests.dproj">
+        <Projects Include="CSVChangerTests.dproj">
             <Dependencies/>
         </Projects>
     </ItemGroup>
@@ -26,23 +26,23 @@
     <Target Name="CSVUpdater:Make">
         <MSBuild Projects="CSVUpdater.dproj" Targets="Make"/>
     </Target>
-    <Target Name="CSVUpdaterTests">
-        <MSBuild Projects="CSVUpdaterTests.dproj"/>
+    <Target Name="CSVChangerTests">
+        <MSBuild Projects="CSVChangerTests.dproj"/>
     </Target>
-    <Target Name="CSVUpdaterTests:Clean">
-        <MSBuild Projects="CSVUpdaterTests.dproj" Targets="Clean"/>
+    <Target Name="CSVChangerTests:Clean">
+        <MSBuild Projects="CSVChangerTests.dproj" Targets="Clean"/>
     </Target>
-    <Target Name="CSVUpdaterTests:Make">
-        <MSBuild Projects="CSVUpdaterTests.dproj" Targets="Make"/>
+    <Target Name="CSVChangerTests:Make">
+        <MSBuild Projects="CSVChangerTests.dproj" Targets="Make"/>
     </Target>
     <Target Name="Build">
-        <CallTarget Targets="CSVUpdater;CSVUpdaterTests"/>
+        <CallTarget Targets="CSVUpdater;CSVChangerTests"/>
     </Target>
     <Target Name="Clean">
-        <CallTarget Targets="CSVUpdater:Clean;CSVUpdaterTests:Clean"/>
+        <CallTarget Targets="CSVUpdater:Clean;CSVChangerTests:Clean"/>
     </Target>
     <Target Name="Make">
-        <CallTarget Targets="CSVUpdater:Make;CSVUpdaterTests:Make"/>
+        <CallTarget Targets="CSVUpdater:Make;CSVChangerTests:Make"/>
     </Target>
     <Import Project="$(BDS)\Bin\CodeGear.Group.Targets" Condition="Exists('$(BDS)\Bin\CodeGear.Group.Targets')"/>
 </Project>

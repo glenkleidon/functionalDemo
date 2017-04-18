@@ -1,4 +1,4 @@
-program CSVUpdaterTests;
+program CSVChangerTests;
 {
 
   Delphi DUnit Test Project
