@@ -33,17 +33,97 @@ uses System.Classes, System.SysUtils, System.Types,
     property Row[AIndex : integer] : string read getRowbyIndex write setRowByIndex;
   end;
 
+function nextRow(AStream: TStream; ALineBreak: String;
+     AQuoteChars: string; ABufferSize: integer = 500): string;
+function CountChars(ARawBytes: RawByteString; AChars: string; AStart: integer = 0;
+          AEnd: integer = MaxInt):Integer;
 implementation
+uses strUtils;
+
+function CountChars(ARawBytes: RawByteString; AChars: string; AStart:integer;
+          AEnd:Integer):Integer;
+var p: integer;
+begin
+   result := 0;
+   p:=posEx(AChars, ARawBytes,AStart);
+   while (p>0) and (p<AEnd) do
+   begin
+     Result := Result +1;
+     p:=posEx(AChars, ARawBytes,AStart);
+   end;
+end;
+
+Function IsEvenDefTrue(AInteger: integer): boolean;
+begin
+  Result := True;
+  if AInteger=0 then exit;
+  Result := (Ainteger div 2 = 0);
+end;
+
+function nextRow(AStream: TStream; ALineBreak: String;
+     AQuoteChars: string; ABufferSize: integer):string ;
+var lBuffer : TStringStream;
+    p: integer;
+    lCharsRemaining : int64;
+    lBytesToRead : integer;
+    LineText : PRawByteString;
+    lBufferSize : integer;
+    lCopybufferFromStream : boolean;
+begin
+  Result := '';
+
+  // Dont Duplicate the data if using a Memory Stream
+  lCharsRemaining := AStream.size-AStream.Position;
+  if (AStream.InheritsFrom(TMemoryStream)) then
+  begin
+     lCopybufferFromStream := false;
+     lBufferSize := MaxInt;
+  end
+  else
+  begin
+     lBuffer := TStringStream.create;
+     lCopybufferFromStream := true;
+     lBufferSize := ABufferSize;
+     if (lBufferSize>lCharsRemaining) then  lBufferSize := lCharsRemaining
+  end;
+
+  try
+    while lCharsRemaining>0 do
+    Begin
+      if lCopybufferFromStream then lBuffer.copyfrom(AStream,lBufferSize);
+      lCharsRemaining := lCharsRemaining - lBufferSize;
+      LineText := @lBuffer.Memory;
+      p :=Pos(ALineBreak, LineText^);
+      while (p>0) do
+      begin
+         if IsEvenDefTrue(CountChars(LineText^,AQuoteChars,0,p)) then
+         begin
+           result := copy(LineText^,1,p);
+           AStream.Position := p+1;
+           exit;
+         end;
+         p := PosEx(ALineBreak, LineText^, p);
+      end;
+   End;
+  finally
+    if lCopybufferFromStream then freeandNil(lBuffer);
+  end;
+
+end;
+
 
 { TCSVUpdater }
 
 constructor TCSVUpdater.Create(AFilename: string);
 begin
   fHeaders := TStringlist.Create;
+  fBody := TStringList.Create;
   fHeaders.QuoteChar := '"';
   fHeaders.Delimiter := ',';
   fHeaders.LineBreak := #13#10;
-  fBody := TStringList.Create;
+  fBody.QuoteChar := '"';
+  fBody.LineBreak := #13#10;
+  fBody.Delimiter := '"';
   FileName := AFilename;
 end;
 
@@ -56,7 +136,7 @@ end;
 
 function TCSVUpdater.getBody: TStrings;
 begin
-  result := self.fBody;
+  result := self.fbody as TStrings;
 end;
 
 function TCSVUpdater.getHeaders: string;
@@ -66,11 +146,12 @@ begin
   if (fHeaders.Count=0) then
   try
    LoadHeaders;
-   result := self.fHeaders.Text;
   Except
    on e:exception do
      fLastError := 'Could not load headers: '+ e.Message;
   end;
+  result := self.fHeaders.Text;
+
 end;
 
 function TCSVUpdater.getRowByIndex(AIndex: integer): string;
@@ -84,27 +165,22 @@ begin
 end;
 
 Procedure TCSVUpdater.LoadHeaders;
-var lList : TStringlist;
 begin
   if (fFileName<>'') and
      (FileExists(fFilename,true)) then
   begin
-    lList := TStringlist.Create;
-    try
-      lList.LoadFromFile(fFilename);
-      Headers := lList[0];
-      lList.Delete(0);
-      self.fBody.Text := lList.Text;
-    finally
-      FreeAndNil(lList);
-    end;
+    self.fBody.LoadFromFile(fFilename);
+    Headers := self.fBody[0];
+    self.fBody.Delete(0);
   end;
 end;
 
 function TCSVUpdater.LocateRow(AIndex: integer): string;
 begin
+  if self.fbody.count<1 then loadHeaders;
   if (AIndex<1) then raise Exception.Create('Row must be >= 1');
-  result :=
+  if (Aindex>self.fBody.Count) then raise Exception.Createfmt('Row %u not found.',[AIndex]);
+  result := self.fBody[AIndex-1];
 end;
 
 procedure TCSVUpdater.SetBody(const Value: TStrings);

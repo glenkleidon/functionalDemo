@@ -17,7 +17,8 @@ program CSVChangerTests;
 uses
   DUnitTestRunner,
   uCSVUpdater in 'uCSVUpdater.pas',
-  TestuCSVUpdater in 'TestuCSVUpdater.pas';
+  TestuCSVUpdater in 'TestuCSVUpdater.pas',
+  TestuNextRow in 'TestuNextRow.pas';
 
 {$R *.RES}
 
