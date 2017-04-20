@@ -13,8 +13,7 @@ interface
 
 uses
   TestFramework, System.SysUtils, System.Generics.Collections,
-  System.Generics.Defaults, System.Types, System.Classes, uCSVUpdater,
-  Functional.Value;
+  System.Generics.Defaults, System.Types, System.Classes, uCSVUpdater;
 
 type
   // Test methods for class TCSVUpdater
@@ -43,15 +42,27 @@ implementation
 
 { TTestNextRow }
 
+procedure TTestNextRow.A_Null_Stream_Returns_Empty;
+var lExpected, lResult : string;
+begin
+   lResult :=  uCSVUpdater.nextRow(nil,#13#10, '"');
+   lExpected := '';
+   check(lExpected = lResult,
+                  'Expected :"'+lExpected+'"'#13#10 +
+                  'Actual   :"'+lResult  +'"');
+end;
+
+
 procedure TTestNextRow.An_Empty_Row_Returns_Empty;
 var lExpected, lResult : string;
 begin
-   lResult := NextRow
-end;
-
-procedure TTestNextRow.A_Null_Stream_Returns_Empty;
-begin
-   raise Exception.Create('Not Implemented');
+   self.FStringStream.WriteString(#13#10+'Row2Field1,Row2Field2');
+   self.FStringStream.Position := 0;
+   lResult :=  uCSVUpdater.nextRow(Self.FStringStream,#13#10, '"');
+   lExpected := '';
+   check(lExpected = lResult,
+                  'Expected :"'+lExpected+'"'#13#10 +
+                  'Actual   :"'+lResult  +'"');
 
 end;
 
@@ -80,9 +91,19 @@ begin
 end;
 
 procedure TTestNextRow.Correct_Row_Returns_After_Empty_Field;
+var lExpected, lResult : string;
 begin
+   self.FStringStream.WriteString(#13#10+'Row2Field1,Row2Field2');
+   self.FStringStream.Position := 0;
+   //Ignore First Row.
+   uCSVUpdater.nextRow(Self.FStringStream,#13#10, '"');
+   //Return Second Row
+   lResult :=  uCSVUpdater.nextRow(Self.FStringStream,#13#10, '"');
+   lExpected := 'Row2Field1,Row2Field2';
+   check(lExpected = lResult,
+                  'Expected :"'+lExpected+'"'#13#10 +
+                  'Actual   :"'+lResult  +'"');
 
-   raise Exception.Create('Not Implemented');
 end;
 
 procedure TTestNextRow.Multiple_Rows_Iteratively_Returns_Correct_From_Large_FileStream;

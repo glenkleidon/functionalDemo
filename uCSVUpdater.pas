@@ -64,47 +64,57 @@ function nextRow(AStream: TStream; ALineBreak: String;
      AQuoteChars: string; ABufferSize: integer):string ;
 var lBuffer : TStringStream;
     p: integer;
-    lCharsRemaining : int64;
+    StartPosition, lCharsRemaining : int64;
     lBytesToRead : integer;
-    LineText : PRawByteString;
+    LineText : AnsiString;
     lBufferSize : integer;
     lCopybufferFromStream : boolean;
+
 begin
   Result := '';
+  if AStream=nil then exit;
 
   // Dont Duplicate the data if using a Memory Stream
+  StartPosition := AStream.Position;
   lCharsRemaining := AStream.size-AStream.Position;
   if (AStream.InheritsFrom(TMemoryStream)) then
   begin
      lCopybufferFromStream := false;
      lBufferSize := MaxInt;
+     lBuffer := AStream as TStringStream;
+     p := AStream.Position+1;
+     AStream.Position := AStream.Size;
   end
   else
   begin
      lBuffer := TStringStream.create;
      lCopybufferFromStream := true;
      lBufferSize := ABufferSize;
+     p := 1;
      if (lBufferSize>lCharsRemaining) then  lBufferSize := lCharsRemaining
   end;
 
   try
+    LineText := '';
     while lCharsRemaining>0 do
     Begin
       if lCopybufferFromStream then lBuffer.copyfrom(AStream,lBufferSize);
-      lCharsRemaining := lCharsRemaining - lBufferSize;
-      LineText := @lBuffer.Memory;
-      p :=Pos(ALineBreak, LineText^);
+      lCharsRemaining := lBuffer.size - StartPosition - lBuffer.Position;
+      SetString(LineText, pAnsiChar(lBuffer.Memory), lBuffer.size);
+      p :=Pos(ALineBreak, LineText,p);
       while (p>0) do
       begin
-         if IsEvenDefTrue(CountChars(LineText^,AQuoteChars,0,p)) then
+         if IsEvenDefTrue(CountChars(LineText,AQuoteChars,0,p)) then
          begin
-           result := copy(LineText^,1,p);
-           AStream.Position := p+1;
+           result := copy(LineText,1,p-1);
+           AStream.Position := p+ALineBreak.Length-1;
            exit;
          end;
-         p := PosEx(ALineBreak, LineText^, p);
+         p := PosEx(ALineBreak, LineText, p);
       end;
    End;
+   // Not found, must be the remaining text
+   Result := copy(lineText,(StartPosition and MaxInt)+1,MaxInt);
   finally
     if lCopybufferFromStream then freeandNil(lBuffer);
   end;
