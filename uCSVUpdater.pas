@@ -27,9 +27,9 @@ uses System.Classes, System.SysUtils, System.Types,
     function getBody: TStrings;
     procedure SetBody(const Value: TStrings);
   public
-    property Filename: string read fFileName write SetFilename;
-    property Headers : string read getHeaders write SetHeaders;
-    property Body : TStrings read getBody write SetBody;
+    property Filename: string read fFileName;
+    property Headers : string read getHeaders;
+    property Body : TStrings read getBody;
     property Row[AIndex : integer] : string read getRowbyIndex write setRowByIndex;
   end;
 
