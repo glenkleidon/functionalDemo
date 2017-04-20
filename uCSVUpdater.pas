@@ -17,14 +17,11 @@ uses System.Classes, System.SysUtils, System.Types,
     fBody : TStringList;
     fLastError: string;
     function getHeaders: string;
-    procedure SetHeaders(const Value: string);
     procedure LoadHeaders;
     function getRowByIndex(AIndex: integer): string;
     procedure setRowByIndex(AIndex: integer; const Value: string);
     function LocateRow(AIndex: integer): string;
     function getRowByValue(AHeader: string; AValue: string): string;
-    function getBody: TStrings;
-    procedure SetBody(const Value: TStrings);
   public
     property Filename: string read fFileName;
     property Headers : string read getHeaders;
@@ -35,6 +32,7 @@ function nextRow(AStream: TStream; ALineBreak: String;
      AQuoteChars: string; ABufferSize: integer = 500): string;
 function CountChars(AText: String; AChars: string; AStart: integer = 0;
           AEnd: integer = MaxInt):Integer;
+
 implementation
 uses strUtils;
 
@@ -142,11 +140,6 @@ begin
   inherited;
 end;
 
-function TCSVUpdater.getBody: TStrings;
-begin
-  result := self.fbody as TStrings;
-end;
-
 function TCSVUpdater.getHeaders: string;
 begin
   fLastError := '';
@@ -178,7 +171,7 @@ begin
      (FileExists(fFilename,true)) then
   begin
     self.fBody.LoadFromFile(fFilename);
-    self.SetHeaders(self.fBody[0]);
+    fHeaders.DelimitedText := self.fBody[0];
     self.fBody.Delete(0);
   end;
 end;
@@ -189,16 +182,6 @@ begin
   if (AIndex<1) then raise Exception.Create('Row must be >= 1');
   if (Aindex>self.fBody.Count) then raise Exception.Createfmt('Row %u not found.',[AIndex]);
   result := self.fBody[AIndex-1];
-end;
-
-procedure TCSVUpdater.SetBody(const Value: TStrings);
-begin
-
-end;
-
-procedure TCSVUpdater.SetHeaders(const Value: string);
-begin
-  self.fHeaders.DelimitedText := Value;
 end;
 
 procedure TCSVUpdater.setRowByIndex(AIndex: integer; const Value: string);
