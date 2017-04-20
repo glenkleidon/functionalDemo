@@ -84,12 +84,6 @@ begin
    raise Exception.Create('Not Implemented');
 end;
 
-procedure TTestNextRow.A_Simple_Row_returns_correct_Value;
-begin
-
-   raise Exception.Create('Not Implemented');
-end;
-
 procedure TTestNextRow.Correct_Row_Returns_After_Empty_Field;
 var lExpected, lResult : string;
 begin
@@ -103,20 +97,67 @@ begin
    check(lExpected = lResult,
                   'Expected :"'+lExpected+'"'#13#10 +
                   'Actual   :"'+lResult  +'"');
+end;
+
+procedure TTestNextRow.A_Simple_Row_returns_correct_Value;
+var lExpected, lResult : string;
+begin
+   self.FStringStream.WriteString('Row1Field1,Row1Field2'#13#10+'Row2Field1,Row2Field2');
+   self.FStringStream.Position := 0;
+   lResult :=  uCSVUpdater.nextRow(Self.FStringStream,#13#10, '"');
+   lExpected := 'Row1Field1,Row1Field2';
+   check(lExpected = lResult,
+                  'Expected :"'+lExpected+'"'#13#10 +
+                  'Actual   :"'+lResult  +'"');
+end;
+
+procedure TTestNextRow.Multiple_Rows_Iteratively_Returns_Correct_Values;
+var lExpected, lResult : string;
+begin
+   self.FStringStream.WriteString('Row1Field1,Row1Field2'#13#10+'Row2Field1,Row2Field2');
+   self.FStringStream.Position := 0;
+   //First Row.
+   lResult :=  uCSVUpdater.nextRow(Self.FStringStream,#13#10, '"');
+   //Return Second Row
+   lExpected := 'Row1Field1,Row1Field2';
+   check(lExpected = lResult,
+                  'ROW1 Expected :"'+lExpected+'"'#13#10 +
+                  'ROW1 Actual   :"'+lResult  +'"');
+   lResult :=  uCSVUpdater.nextRow(Self.FStringStream,#13#10, '"');
+   lExpected := 'Row2Field1,Row2Field2';
+   check(lExpected = lResult,
+                  'ROW2 Expected :"'+lExpected+'"'#13#10 +
+                  'ROW2 Actual   :"'+lResult  +'"');
 
 end;
 
 procedure TTestNextRow.Multiple_Rows_Iteratively_Returns_Correct_From_Large_FileStream;
+var lFileStream : TFileStream;
+    lExpected, lResult: string;
+    c: integer;
 begin
-   raise Exception.Create('Not Implemented');
-
+   lFilestream := TFileStream.Create(expandFIleName('.\data\lots-of-fun-stuff.csv'),fmOpenRead);
+   try
+   lFilestream.Position := 0;
+   c := 0;
+   //skip over header;
+   lResult := uCSVUpdater.nextRow(lFilestream,#13#10, '"');
+   while lResult<>'' do
+   begin
+     inc(c);
+     uCSVUpdater.nextRow(lFilestream,#13#10, '"');
+     uCSVUpdater.nextRow(lFilestream,#13#10, '"');
+     lResult :=  uCSVUpdater.nextRow(lFilestream,#13#10, '"');
+     lExpected := '23,2013-1-9,"Halo Reach","Game","A Prequel to the original and famous Halo series"';
+     check(lExpected = lResult,
+                  'Row '+ c.ToString + 'Expected :"'+lExpected+'"'#13#10 +
+                  'Row '+ c.ToString + 'Actual   :"'+lResult  +'"');
+   end;
+   finally
+      freeandnil(lFilestream);
+   end;
 end;
 
-procedure TTestNextRow.Multiple_Rows_Iteratively_Returns_Correct_Values;
-begin
-   raise Exception.Create('Not Implemented');
-
-end;
 
 procedure TTestNextRow.SetUp;
 begin

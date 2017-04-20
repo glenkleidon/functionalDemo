@@ -35,21 +35,21 @@ uses System.Classes, System.SysUtils, System.Types,
 
 function nextRow(AStream: TStream; ALineBreak: String;
      AQuoteChars: string; ABufferSize: integer = 500): string;
-function CountChars(ARawBytes: RawByteString; AChars: string; AStart: integer = 0;
+function CountChars(AText: String; AChars: string; AStart: integer = 0;
           AEnd: integer = MaxInt):Integer;
 implementation
 uses strUtils;
 
-function CountChars(ARawBytes: RawByteString; AChars: string; AStart:integer;
+function CountChars(AText: String; AChars: string; AStart:integer;
           AEnd:Integer):Integer;
 var p: integer;
 begin
    result := 0;
-   p:=posEx(AChars, ARawBytes,AStart);
-   while (p>0) and (p<AEnd) do
+   p:=posEx(AChars, AText,AStart);
+   while (p>0) and (p<=AEnd) do
    begin
      Result := Result +1;
-     p:=posEx(AChars, ARawBytes,AStart);
+     p:=posEx(AChars, AText,p+1);
    end;
 end;
 
@@ -57,7 +57,7 @@ Function IsEvenDefTrue(AInteger: integer): boolean;
 begin
   Result := True;
   if AInteger=0 then exit;
-  Result := (Ainteger div 2 = 0);
+  Result := ( (Ainteger mod 2) = 0);
 end;
 
 function nextRow(AStream: TStream; ALineBreak: String;
@@ -104,13 +104,13 @@ begin
       p :=Pos(ALineBreak, LineText,p);
       while (p>0) do
       begin
-         if IsEvenDefTrue(CountChars(LineText,AQuoteChars,0,p)) then
+         if IsEvenDefTrue(CountChars(LineText,AQuoteChars,1,p)) then
          begin
            result := copy(LineText,1,p-1);
-           AStream.Position := p+ALineBreak.Length-1;
+           AStream.Position := StartPosition+ALineBreak.Length-1;
            exit;
          end;
-         p := PosEx(ALineBreak, LineText, p);
+         p := PosEx(ALineBreak, LineText, p+1);
       end;
    End;
    // Not found, must be the remaining text
