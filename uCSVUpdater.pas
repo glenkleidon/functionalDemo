@@ -20,7 +20,6 @@ uses System.Classes, System.SysUtils, System.Types,
     function LoadHeadersSuccessfully: boolean;
     function getRowByIndex(AIndex: integer): string;
     procedure setRowByIndex(AIndex: integer; const Value: string);
-    function LocateRow(AIndex: integer): string;
     function getRowByValue(AHeader: string; AValue: string): string;
     function getHeaders: string;
     function getFileLoaded: boolean;
@@ -146,29 +145,24 @@ end;
 
 function TCSVUpdater.getFileLoaded: boolean;
 begin
-   result := (Self.fBody.Count>0);
-   if Result then exit;
-   result := LoadFileSuccessfully;
+   result := (Self.fBody.Count>0) or
+             LoadFileSuccessfully(Self.Filename);
 end;
 
 function TCSVUpdater.getHeaders: string;
 begin
-  fLastError := '';
-  result := '';
-  if (fHeaders.Count=0) then
-  try
-   LoadHeaders;
-  Except
-   on e:exception do
-     fLastError := 'Could not load headers: '+ e.Message;
-  end;
-  result := self.fHeaders.Text;
+  if LoadHeadersSuccessfully then
+      result := self.fHeaders.Text;
 
 end;
 
 function TCSVUpdater.getRowByIndex(AIndex: integer): string;
 begin
-  result := LocateRow(AIndex);
+  result := '';
+  if (AIndex>1) then raise Exception.Create('Row must be >= 1'); // Truly an exception
+
+  if (self.FileLoaded) and (Aindex<=self.fBody.Count) then
+      result := self.fBody[AIndex-1];
 end;
 
 function TCSVUpdater.getRowByValue(AHeader, AValue: string): string;
@@ -181,21 +175,21 @@ var lFollowLinkFiles : boolean;
 begin
   result := false;
 
-  if (fFileName<>'') then
+  if (Filename='') then
   begin
     self.fLastError := 'No file name has been set.';
     exit;
   end;
 
   lFollowLinkFiles := true;
-  if not(FileExists(fFilename, lFollowLinkFiles)) then
+  if not(FileExists(Filename, lFollowLinkFiles)) then
   begin
-    self.fLastError := format('File %s does not exist', [fFileName]);
+    self.fLastError := format('File %s does not exist', [FileName]);
     exit;
   end;
-
+  // Side Effect - This will not always return the same value.
   try
-    self.fBody.LoadFromFile(fFilename);
+    self.fBody.LoadFromFile(Filename);
     result := true;
   except
     on e:exception do
@@ -210,18 +204,14 @@ end;
 
 function TCSVUpdater.LoadHeadersSuccessfully: boolean;
 begin
-  Result := (FileLoaded and fHeaders.Count>0);
-  if not Result then
-      result := self.FileLoaded and Self.fBody.Count>0
+  Result := FileLoaded and (fHeaders.Count>0);
 
-end;
+  if (not Result) and (Self.fBody.Count>0) then
+  begin
+    self.fHeaders.DelimitedText := self.fBody[0];
+    result := self.fHeaders.Count>0;
+  end;
 
-function TCSVUpdater.LocateRow(AIndex: integer): string;
-begin
-  if self.fbody.count<1 then loadHeaders;
-  if (AIndex<1) then raise Exception.Create('Row must be >= 1');
-  if (Aindex>self.fBody.Count) then raise Exception.Createfmt('Row %u not found.',[AIndex]);
-  result := self.fBody[AIndex-1];
 end;
 
 procedure TCSVUpdater.setRowByIndex(AIndex: integer; const Value: string);
