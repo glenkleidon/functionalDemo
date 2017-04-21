@@ -6,6 +6,10 @@ uses System.Classes, System.SysUtils, System.Types,
      System.Generics.Defaults, System.Generics.Collections,
      Functional.Value;
 
+  Const
+    ALWAYS_FOLLOW_LINK_FILES = true;
+    DONT_FOLLOW_LINK_FILES = false;
+
   type
 
   TCSVUpdater = class
@@ -171,7 +175,6 @@ begin
 end;
 
 function TCSVUpdater.LoadFileSuccessfully(Filename: string): boolean;
-var lFollowLinkFiles : boolean;
 begin
   result := false;
 
@@ -181,13 +184,13 @@ begin
     exit;
   end;
 
-  lFollowLinkFiles := true;
-  if not(FileExists(Filename, lFollowLinkFiles)) then
+  if not(FileExists(Filename, ALWAYS_FOLLOW_LINK_FILES)) then
   begin
     self.fLastError := format('File %s does not exist', [FileName]);
     exit;
   end;
   // Side Effect - This will not always return the same value.
+  // Capture Error at the lowest level (except if it is really an exceptional)
   try
     self.fBody.LoadFromFile(Filename);
     result := true;
