@@ -19,9 +19,10 @@ uses System.Classes, System.SysUtils, System.Types,
        IsValid: boolean;
   public
        Procedure Clear;
-       Function Validate(AFilename: string): string;
+       procedure AssignFrom(AValidatedFilename: TValidatedFilename);
+       function Validate(AFilename: string): string;
+       class operator Implicit(AFileName: string): TValidatedFilename;
   End;
-
 
   TCSVUpdater = class
     constructor Create(AFilename: string);
@@ -31,113 +32,22 @@ uses System.Classes, System.SysUtils, System.Types,
     fHeaders: TStringList;
     fBody : TStringList;
     fLastError: string;
-    fValidatedFilename: TValidatedFilename;
-    function LoadFileSuccessfully(AFilename: TValidatedFilename): boolean;
-    function LoadHeadersSuccessfully: boolean;
+    function FileLoadedOrLoadsSuccessfully(AFilename: TValidatedFilename): boolean;
+    function HeaderLoadedOrLoadsSuccessfully: boolean;
     function getRowByIndex(AIndex: integer): string;
     procedure setRowByIndex(AIndex: integer; const Value: string);
     function getRowByValue(AHeader: string; AValue: string): string;
     function getHeaders: string;
     function getFileLoaded: boolean;
-    function getValidatedFilename: string;
   public
     property FileLoaded : boolean read getFileLoaded;
     property Filename: string read FFilename;
-    property ValidatedFilename: string read getValidatedFilename;
     property Headers : string read getHeaders;
     property Row[AIndex : integer] : string read getRowbyIndex write setRowByIndex;
   end;
 
-function nextRow(AStream: TStream; ALineBreak: String;
-     AQuoteChars: string; ABufferSize: integer = 500): string;
-function CountChars(AText: String; AChars: string; AStart: integer = 0;
-          AEnd: integer = MaxInt):Integer;
-
 
 implementation
-uses strUtils;
-
-function CountChars(AText: String; AChars: string; AStart:integer;
-          AEnd:Integer):Integer;
-var p: integer;
-begin
-   result := 0;
-   p:=posEx(AChars, AText,AStart);
-   while (p>0) and (p<=AEnd) do
-   begin
-     Result := Result +1;
-     p:=posEx(AChars, AText,p+1);
-   end;
-end;
-
-Function IsEvenDefTrue(AInteger: integer): boolean;
-begin
-  Result := True;
-  if AInteger=0 then exit;
-  Result := ( (Ainteger mod 2) = 0);
-end;
-
-function nextRow(AStream: TStream; ALineBreak: String;
-     AQuoteChars: string; ABufferSize: integer):string ;
-var lBuffer : TStringStream;
-    p: integer;
-    StartPosition, lCharsRemaining : int64;
-    lBytesToRead : integer;
-    LineText : AnsiString;
-    lBufferSize : integer;
-    lCopybufferFromStream : boolean;
-
-begin
-  Result := '';
-  if AStream=nil then exit;
-
-  // Dont Duplicate the data if using a Memory Stream
-  StartPosition := AStream.Position;
-  lCharsRemaining := AStream.size-AStream.Position;
-  if (AStream.InheritsFrom(TMemoryStream)) then
-  begin
-     lCopybufferFromStream := false;
-     lBufferSize := MaxInt;
-     lBuffer := AStream as TStringStream;
-     p := AStream.Position+1;
-     AStream.Position := AStream.Size;
-  end
-  else
-  begin
-     lBuffer := TStringStream.create;
-     lCopybufferFromStream := true;
-     lBufferSize := ABufferSize;
-     p := 1;
-     if (lBufferSize>lCharsRemaining) then  lBufferSize := lCharsRemaining
-  end;
-
-  try
-    LineText := '';
-    while lCharsRemaining>0 do
-    Begin
-      if lCopybufferFromStream then lBuffer.copyfrom(AStream,lBufferSize);
-      lCharsRemaining := lBuffer.size - StartPosition - lBuffer.Position;
-      SetString(LineText, pAnsiChar(lBuffer.Memory), lBuffer.size);
-      p :=Pos(ALineBreak, LineText,p);
-      while (p>0) do
-      begin
-         if IsEvenDefTrue(CountChars(LineText,AQuoteChars,1,p)) then
-         begin
-           result := copy(LineText,1,p-1);
-           AStream.Position := StartPosition+ALineBreak.Length-1;
-           exit;
-         end;
-         p := PosEx(ALineBreak, LineText, p+1);
-      end;
-   End;
-   // Not found, must be the remaining text
-   Result := copy(lineText,(StartPosition and MaxInt)+1,MaxInt);
-  finally
-    if lCopybufferFromStream then freeandNil(lBuffer);
-  end;
-
-end;
-
 
 { TCSVUpdater }
 
@@ -151,7 +61,6 @@ begin
   fBody.QuoteChar := '"';
   fBody.LineBreak := #13#10;
   fBody.Delimiter := '"';
-  fValidatedFilename.Clear;
   fFilename := ExpandFileName(AFilename);
 end;
 
@@ -162,18 +71,34 @@ begin
   inherited;
 end;
 
+function TCSVUpdater.FileLoadedOrLoadsSuccessfully(AFilename: TValidatedFilename): boolean;
+begin
+  Result := (Self.fBody.Count>0);
+  if Result then exit;
+
+  if (AFilename.IsValid) then
+    try
+      self.fBody.LoadFromFile(AFilename.Name);
+      result := true;
+    except
+      on e:exception do
+        begin
+           // What conditions do we want to handle???
+           self.fLastError := e.Message;
+           raise;
+        end;
+    end;
+
+end;
+
 function TCSVUpdater.getFileLoaded: boolean;
 begin
-   result := (Self.fBody.Count>0) or
-             (
-               (Self.ValidatedFilename<>'') and
-               (LoadFileSuccessfully(Self.fValidatedFilename))
-              );
+  Result := FileLoadedOrLoadsSuccessfully(Filename);
 end;
 
 function TCSVUpdater.getHeaders: string;
 begin
-  if LoadHeadersSuccessfully then
+  if HeaderLoadedOrLoadsSuccessfully then
       result := self.fHeaders.Text;
 
 end;
@@ -192,37 +117,7 @@ begin
 
 end;
 
-function TCSVUpdater.getValidatedFilename: string;
-begin
-  if self.fValidatedFilename.IsValid then
-     result := self.fValidatedFilename.Name
-  else
-     result := self.fValidatedFilename.validate(self.Filename);
-end;
-
-function TCSVUpdater.LoadFileSuccessfully(AFilename: TValidatedFilename): boolean;
-begin
-  result := AFilename.isValid;
-  // Side Effect - This will not always return the same value.
-  // Capture Error at the lowest level (except if it is really an exceptional)
-  if not result then
-     self.fLastError := AFileName.InvalidReason
-  else
-    try
-      self.fBody.LoadFromFile(AFilename.Name);
-      result := true;
-    except
-      on e:exception do
-        begin
-           // What conditions do we want to handle???
-           self.fLastError := e.Message;
-           raise;
-        end;
-    end;
-
-end;
-
-function TCSVUpdater.LoadHeadersSuccessfully: boolean;
+function TCSVUpdater.HeaderLoadedOrLoadsSuccessfully: boolean;
 begin
   Result := FileLoaded and (fHeaders.Count>0);
 
@@ -241,6 +136,13 @@ end;
 
 { TValidatedFilename }
 
+procedure TValidatedFilename.AssignFrom(AValidatedFilename: TValidatedFilename);
+begin
+  Name := AValidatedFilename.Name;
+  IsValid := AValidatedFilename.IsValid;
+  InvalidReason := AValidatedFilename.InvalidReason;
+end;
+
 procedure TValidatedFilename.Clear;
 begin
   self.Name := '';
@@ -250,13 +152,19 @@ end;
 
 { TValidatedFilenameHelper }
 
+class operator TValidatedFilename.Implicit(AFileName: string): TValidatedFilename;
+begin
+  Result.Clear;
+  Result.Validate(AFilename);
+end;
+
 function TValidatedFilename.Validate(AFilename: string): string;
 begin
   Result := '';
   Clear;
   Name := AFilename;
   if (Name<>'') and
-     (FileExists(Name, ALWAYS_FOLLOW_LINK_FILES)) then
+     not (FileExists(Name, ALWAYS_FOLLOW_LINK_FILES)) then
      InvalidReason := format('File %s does not exist', [Name])
   else
   begin

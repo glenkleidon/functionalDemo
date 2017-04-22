@@ -6,7 +6,8 @@ program CSVUpdater;
 
 uses
   System.SysUtils,
-  uCSVUpdater in 'uCSVUpdater.pas';
+  uCSVUpdater in 'uCSVUpdater.pas',
+  GlenKleidon.CSVUtils in 'GlenKleidon.CSVUtils.pas';
 
 begin
   try

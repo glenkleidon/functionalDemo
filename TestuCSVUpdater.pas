@@ -33,6 +33,8 @@ type
 
 implementation
 
+ uses GlenKleidon.CSVUtils;
+
 procedure TestTCSVUpdater.SetUp;
 begin
   FCSVUpdater := TCSVUpdater.Create('.\data\fun-stuff.csv');

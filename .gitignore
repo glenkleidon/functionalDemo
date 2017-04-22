@@ -4,3 +4,4 @@
 *.stat
 *.dcu
 Win32/
+*.tvsconfig
