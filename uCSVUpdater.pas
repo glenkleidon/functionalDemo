@@ -16,13 +16,16 @@ uses System.Classes, System.SysUtils, System.Types,
     fHeaders: TStringList;
     fBody : TStringList;
     fLastError: string;
-    function getHeaders: string;
-    procedure LoadHeaders;
+    function LoadFileSuccessfully: boolean;
+    function LoadHeadersSuccessfully: boolean;
     function getRowByIndex(AIndex: integer): string;
     procedure setRowByIndex(AIndex: integer; const Value: string);
     function LocateRow(AIndex: integer): string;
     function getRowByValue(AHeader: string; AValue: string): string;
+    function getHeaders: string;
+    function getFileLoaded: boolean;
   public
+    property FileLoaded : boolean read getFileLoaded;
     property Filename: string read fFileName;
     property Headers : string read getHeaders;
     property Row[AIndex : integer] : string read getRowbyIndex write setRowByIndex;
@@ -52,13 +55,20 @@ begin
   inherited;
 end;
 
+function TCSVUpdater.getFileLoaded: boolean;
+begin
+   result := (Self.fBody.Count>0);
+   if Result then exit;
+   result := LoadFileSuccessfully;
+end;
+
 function TCSVUpdater.getHeaders: string;
 begin
   fLastError := '';
   result := '';
   if (fHeaders.Count=0) then
   try
-   LoadHeaders;
+   LoadHeadersSuccessfully;
   Except
    on e:exception do
      fLastError := 'Could not load headers: '+ e.Message;
@@ -77,20 +87,49 @@ begin
 
 end;
 
-Procedure TCSVUpdater.LoadHeaders;
+function TCSVUpdater.LoadFileSuccessfully: boolean;
+var lFollowLinkFiles : boolean;
 begin
-  if (fFileName<>'') and
-     (FileExists(fFilename,true)) then
+  result := false;
+
+  if (fFileName<>'') then
   begin
-    self.fBody.LoadFromFile(fFilename);
-    fHeaders.DelimitedText := self.fBody[0];
-    self.fBody.Delete(0);
+    self.fLastError := 'No file name has been set.';
+    exit;
   end;
+
+  lFollowLinkFiles := true;
+  if not(FileExists(fFilename, lFollowLinkFiles)) then
+  begin
+    self.fLastError := format('File %s does not exist', [fFileName]);
+    exit;
+  end;
+
+  try
+    self.fBody.LoadFromFile(fFilename);
+    result := true;
+  except
+    on e:exception do
+      begin
+         // What conditions do we want to handle???
+         self.fLastError := e.Message;
+         raise;
+      end;
+  end;
+
+end;
+
+function TCSVUpdater.LoadHeadersSuccessfully: boolean;
+begin
+  Result := (FileLoaded and (fHeaders.Count>0));
+  if not Result then
+      result := self.FileLoaded and (Self.fBody.Count>0);
+
 end;
 
 function TCSVUpdater.LocateRow(AIndex: integer): string;
 begin
-  if self.fbody.count<1 then loadHeaders;
+  if (self.fbody.count<1) then LoadHeadersSuccessfully;
   if (AIndex<1) then raise Exception.Create('Row must be >= 1');
   if (Aindex>self.fBody.Count) then raise Exception.Createfmt('Row %u not found.',[AIndex]);
   result := self.fBody[AIndex-1];
