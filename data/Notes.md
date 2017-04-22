@@ -15,6 +15,15 @@ There are a number of aspects here.  Side effects (generally) are things that ha
           (i). FileLoaded & LoadFileSuccessfully 
           (ii). Now loadHeader is a little more honest.
      (b). GetFileLoaded
-     (c). 
-     (d). Remove LocateRow
+     (c). Remove LocateRow
+
+## 3. Primitive Obsession
+
+Validation can be handled at a concept level - a filename is not a string.  So we want encapsulate the concept
+of a filename before passing it to our function so the function does not have
+to worry about things it is not really interested in.
+
+     (a). TValidated Filename class
+     (b). TValidated FIlename as record
+
 

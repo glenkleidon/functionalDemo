@@ -12,6 +12,13 @@ uses System.Classes, System.SysUtils, System.Types,
 
   type
 
+  TValidatedFilename = Class
+    Name: string;
+    InvalidReason: string;
+    class function isValid(AName: string) : boolean;
+    class function ValidFilename(AName: string) : TValidatedFilename;
+  End;
+
   TCSVUpdater = class
     constructor Create(AFilename: string);
     destructor  Destroy; override;
@@ -20,7 +27,7 @@ uses System.Classes, System.SysUtils, System.Types,
     fHeaders: TStringList;
     fBody : TStringList;
     fLastError: string;
-    function LoadFileSuccessfully(Filename: string): boolean;
+    function LoadFileSuccessfully(Filename: TValidatedFilename): boolean;
     function LoadHeadersSuccessfully: boolean;
     function getRowByIndex(AIndex: integer): string;
     procedure setRowByIndex(AIndex: integer; const Value: string);
@@ -177,18 +184,6 @@ end;
 function TCSVUpdater.LoadFileSuccessfully(Filename: string): boolean;
 begin
   result := false;
-
-  if (Filename='') then
-  begin
-    self.fLastError := 'No file name has been set.';
-    exit;
-  end;
-
-  if not(FileExists(Filename, ALWAYS_FOLLOW_LINK_FILES)) then
-  begin
-    self.fLastError := format('File %s does not exist', [FileName]);
-    exit;
-  end;
   // Side Effect - This will not always return the same value.
   // Capture Error at the lowest level (except if it is really an exceptional)
   try
@@ -219,6 +214,30 @@ end;
 
 procedure TCSVUpdater.setRowByIndex(AIndex: integer; const Value: string);
 begin
+
+end;
+
+{ TValidatedFilename }
+
+class function TValidatedFilename.isValid(AName: string): boolean;
+begin
+  Result := false;
+  inValidReason := '';
+  if (AName='') then
+    invalidReason := 'No file name has been set.'
+  else if not(FileExists(AName, ALWAYS_FOLLOW_LINK_FILES)) then
+    invalidReason := format('File %s does not exist', [AName])
+  else Result := true;
+end;
+
+class function TValidatedFilename.ValidFilename(AName: string): TValidatedFilename;
+begin
+  Result := nil;
+  if (isValid(AName))then
+  begin
+    result := TValidatedFilename.Create;
+    Result.Name := AName;
+  end;
 
 end;
 
