@@ -12,6 +12,16 @@ uses System.Classes, System.SysUtils, System.Types,
 
   type
 
+  TValidatedFilename = Class
+  private
+    Name: string;
+    InvalidReason: string;
+  public
+    class function isValid(AName: string) : boolean;
+    class function ValidFilename(AName: string) : TValidatedFilename;
+    constructor Create;
+  End;
+
   TCSVUpdater = class
     constructor Create(AFilename: string);
     destructor  Destroy; override;
@@ -20,7 +30,7 @@ uses System.Classes, System.SysUtils, System.Types,
     fHeaders: TStringList;
     fBody : TStringList;
     fLastError: string;
-    function LoadFileSuccessfully: boolean;
+    function LoadFileSuccessfully(AValidatedFilename: TValidatedFilename): boolean;
     function LoadHeadersSuccessfully: boolean;
     function getRowByIndex(AIndex: integer): string;
     procedure setRowByIndex(AIndex: integer; const Value: string);
@@ -59,9 +69,17 @@ begin
 end;
 
 function TCSVUpdater.getFileLoaded: boolean;
+var lValidatedFilename: TValidatedFilename;
 begin
-   result := (Self.fBody.Count>0) or
-             LoadFileSuccessfully;
+   result := false;
+   lValidatedFilename:=nil;
+   try
+     lValidatedFilename := TValidatedFilename.ValidFilename(Filename);
+     result := (Self.fBody.Count>0) or
+                 LoadFileSuccessfully(lValidatedFilename);
+   finally
+     freeandnil(lValidatedFilename);
+   end;
 end;
 
 function TCSVUpdater.getHeaders: string;
@@ -85,24 +103,11 @@ begin
 
 end;
 
-function TCSVUpdater.LoadFileSuccessfully: boolean;
+function TCSVUpdater.LoadFileSuccessfully(AValidatedFilename: TValidatedFilename): boolean;
 begin
   result := false;
-
-  if (Filename='') then
-  begin
-    self.fLastError := 'No file name has been set.';
-    exit;
-  end;
-
-  if not(FileExists(Filename, ALWAYS_FOLLOW_LINK_FILES)) then
-  begin
-    self.fLastError := format('File %s does not exist', [FileName]);
-    exit;
-  end;
-
   try
-    self.fBody.LoadFromFile(Filename);
+    self.fBody.LoadFromFile(AValidatedFilename.Name);
     result := true;
   except
     on e:exception do
@@ -129,6 +134,35 @@ end;
 
 procedure TCSVUpdater.setRowByIndex(AIndex: integer; const Value: string);
 begin
+
+end;
+
+{ TValidatedFilename }
+
+constructor TValidatedFilename.Create;
+begin
+  InvalidReason := 'No file name has been set.';
+  Name := '';
+end;
+
+class function TValidatedFilename.isValid(AName: string): boolean;
+begin
+  Result := false;
+  if (AName<>'') and
+     (not(FileExists(AName, ALWAYS_FOLLOW_LINK_FILES)))
+  then Raise Exception.CreateFmt('File %s does not exist', [AName])
+  else Result := true;
+end;
+
+class function TValidatedFilename.ValidFilename(AName: string): TValidatedFilename;
+begin
+  Result := nil;
+  if (isValid(AName))then
+  begin
+    result := TValidatedFilename.Create();
+    Result.Name := AName;
+    Result.InvalidReason := '';
+  end;
 
 end;
 
