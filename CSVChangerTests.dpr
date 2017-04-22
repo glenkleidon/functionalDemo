@@ -15,6 +15,7 @@ program CSVChangerTests;
 {$ENDIF}
 
 uses
+
   DUnitTestRunner,
   uCSVUpdater in 'uCSVUpdater.pas',
   TestuCSVUpdater in 'TestuCSVUpdater.pas',
@@ -23,6 +24,7 @@ uses
 {$R *.RES}
 
 begin
+  System.ReportMemoryLeaksOnShutdown := true;
   DUnitTestRunner.RunRegisteredTests;
 end.
 

@@ -4,7 +4,7 @@ interface
 
 uses System.Classes, System.SysUtils, System.Types,
      System.Generics.Defaults, System.Generics.Collections,
-     Functional.Value;
+     Functional.Value, windows;
 
   Const
     ALWAYS_FOLLOW_LINK_FILES = true;
@@ -12,14 +12,32 @@ uses System.Classes, System.SysUtils, System.Types,
 
   type
 
-  TValidatedFilename = Class
+  IValidatedFilename = interface
+    function GetName: string;
+    function GetInvalidReason: string;
+    function GetInvalid: boolean;
+    property Name: string read GetName;
+    property InvalidReason: string read GetInvalidReason;
+    property Invalid: boolean read GetInvalid;
+    function isValid(AName: string): Boolean;
+  end;
+
+  TValidatedFilename = Class(TInterfacedObject, IValidatedFilename)
   private
-    Name: string;
-    InvalidReason: string;
+    FName: string;
+    FInvalidReason: string;
+    FInvalid : boolean;
+    function GetInvalidReason: string;
+    function GetName: string;
+    function GetInvalid: boolean;
   public
-    class function isValid(AName: string) : boolean;
-    class function ValidFilename(AName: string) : TValidatedFilename;
-    constructor Create;
+    property Invalid: boolean read GetInvalid;
+    property Name: string read GetName;
+    property InvalidReason: string read GetInvalidReason;
+    function isValid(AName: string) : boolean;
+    class function ValidFilename(AName: string) : IValidatedFilename;
+    constructor Create();
+    destructor Destroy(); override;
   End;
 
   TCSVUpdater = class
@@ -30,7 +48,7 @@ uses System.Classes, System.SysUtils, System.Types,
     fHeaders: TStringList;
     fBody : TStringList;
     fLastError: string;
-    function LoadFileSuccessfully(AValidatedFilename: TValidatedFilename): boolean;
+    function LoadFileSuccessfully(AValidatedFilename: IValidatedFilename): boolean;
     function LoadHeadersSuccessfully: boolean;
     function getRowByIndex(AIndex: integer): string;
     procedure setRowByIndex(AIndex: integer; const Value: string);
@@ -73,13 +91,9 @@ var lValidatedFilename: TValidatedFilename;
 begin
    result := false;
    lValidatedFilename:=nil;
-   try
-     lValidatedFilename := TValidatedFilename.ValidFilename(Filename);
-     result := (Self.fBody.Count>0) or
-                 LoadFileSuccessfully(lValidatedFilename);
-   finally
-     freeandnil(lValidatedFilename);
-   end;
+   result := (Self.fBody.Count>0) or
+               LoadFileSuccessfully(
+                  TValidatedFilename.ValidFilename(Self.fFileName));
 end;
 
 function TCSVUpdater.getHeaders: string;
@@ -103,7 +117,7 @@ begin
 
 end;
 
-function TCSVUpdater.LoadFileSuccessfully(AValidatedFilename: TValidatedFilename): boolean;
+function TCSVUpdater.LoadFileSuccessfully(AValidatedFilename: IValidatedFilename): boolean;
 begin
   result := false;
   try
@@ -141,11 +155,33 @@ end;
 
 constructor TValidatedFilename.Create;
 begin
-  InvalidReason := 'No file name has been set.';
-  Name := '';
+  FInvalidReason := 'No file name has been set.';
+  FName := '';
+  FInvalid := true;
 end;
 
-class function TValidatedFilename.isValid(AName: string): boolean;
+destructor TValidatedFilename.Destroy;
+begin
+  OutputDebugString('Yes, the destructor was called.');
+  inherited;
+end;
+
+function TValidatedFilename.GetInvalid: boolean;
+begin
+  result := FInvalid;
+end;
+
+function TValidatedFilename.GetInvalidReason: string;
+begin
+  result := FInvalidReason;
+end;
+
+function TValidatedFilename.GetName: string;
+begin
+  result := FName;
+end;
+
+function TValidatedFilename.isValid(AName: string): boolean;
 begin
   Result := false;
   if (AName<>'') and
@@ -154,16 +190,17 @@ begin
   else Result := true;
 end;
 
-class function TValidatedFilename.ValidFilename(AName: string): TValidatedFilename;
+class function TValidatedFilename.ValidFilename(AName: string): IValidatedFilename;
+var lValidatedFilename: TValidatedFilename;
 begin
-  Result := nil;
-  if (isValid(AName))then
+  lValidatedFilename := TValidatedFilename.Create();
+  if (lValidatedFilename.isValid(AName))then
   begin
-    result := TValidatedFilename.Create();
-    Result.Name := AName;
-    Result.InvalidReason := '';
+    lValidatedFilename.FName := AName;
+    lValidatedFilename.FInvalidReason := '';
+    lValidatedFilename.FInvalid := false;
   end;
-
+  result := lValidatedFilename as IValidatedFilename;
 end;
 
 end.
