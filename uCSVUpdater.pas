@@ -87,10 +87,7 @@ begin
 end;
 
 function TCSVUpdater.getFileLoaded: boolean;
-var lValidatedFilename: TValidatedFilename;
 begin
-   result := false;
-   lValidatedFilename:=nil;
    result := (Self.fBody.Count>0) or
                LoadFileSuccessfully(
                   TValidatedFilename.ValidFilename(Self.fFileName));
