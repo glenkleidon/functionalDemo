@@ -27,12 +27,12 @@ uses System.Classes, System.SysUtils, System.Types,
     constructor Create(AFilename: string);
     destructor  Destroy; override;
   private
-    fFileName: string;
-    fHeaders: TStringList;
-    fBody : TStringList;
-    fLastError: string;
-    function LoadFileSuccessfully(AValidatedFilename: TValidatedFilename): boolean;
-    function LoadHeadersSuccessfully: boolean;
+    FFileName: string;
+    FHeaders: TStringList;
+    FBody : TStringList;
+    FLastError: string;
+    function FileLoadedOrLoadsSuccessfully(AFilename: TValidatedFilename): boolean;
+    function HeaderLoadedOrLoadsSuccessfully: boolean;
     function getRowByIndex(AIndex: integer): string;
     procedure setRowByIndex(AIndex: integer; const Value: string);
     function getRowByValue(AHeader: string; AValue: string): string;
@@ -40,7 +40,7 @@ uses System.Classes, System.SysUtils, System.Types,
     function getFileLoaded: boolean;
   public
     property FileLoaded : boolean read getFileLoaded;
-    property Filename: string read fFileName;
+    property Filename: string read FFilename;
     property Headers : string read getHeaders;
     property Row[AIndex : integer] : string read getRowbyIndex write setRowByIndex;
   end;
@@ -51,15 +51,15 @@ implementation
 
 constructor TCSVUpdater.Create(AFilename: string);
 begin
-  fHeaders := TStringlist.Create;
-  fBody := TStringList.Create;
-  fHeaders.QuoteChar := '"';
-  fHeaders.Delimiter := ',';
-  fHeaders.LineBreak := #13#10;
-  fBody.QuoteChar := '"';
-  fBody.LineBreak := #13#10;
-  fBody.Delimiter := '"';
-  fFilename := expandFileName(AFilename);
+  FHeaders := TStringlist.Create;
+  FBody := TStringList.Create;
+  FHeaders.QuoteChar := '"';
+  FHeaders.Delimiter := ',';
+  FHeaders.LineBreak := #13#10;
+  FBody.QuoteChar := '"';
+  FBody.LineBreak := #13#10;
+  FBody.Delimiter := '"';
+  FFilename := expandFileName(AFilename);
 end;
 
 destructor TCSVUpdater.Destroy;
@@ -71,13 +71,32 @@ end;
 
 function TCSVUpdater.getFileLoaded: boolean;
 begin
-   result := (Self.fBody.Count>0) or LoadFileSuccessfully(Self.Filename);
+  Result := FileLoadedOrLoadsSuccessfully(Filename);
+end;
+
+function TCSVUpdater.FileLoadedOrLoadsSuccessfully(AFilename: TValidatedFilename): boolean;
+begin
+  Result := (Self.fBody.Count>0);
+  if Result then exit;
+
+  if (AFilename.IsValid) then
+    try
+      self.fBody.LoadFromFile(AFilename.Name);
+      result := true;
+    except
+      on e:exception do
+        begin
+           // What conditions do we want to handle???
+           self.fLastError := e.Message;
+           raise;
+        end;
+    end;
+
 end;
 
 function TCSVUpdater.getHeaders: string;
 begin
-  if LoadHeadersSuccessfully then
-      result := self.fHeaders.Text;
+  if HeaderLoadedOrLoadsSuccessfully then result := self.fHeaders.Text;
 end;
 
 function TCSVUpdater.getRowByIndex(AIndex: integer): string;
@@ -94,25 +113,7 @@ begin
 
 end;
 
-function TCSVUpdater.LoadFileSuccessfully(AValidatedFilename: TValidatedFilename): boolean;
-begin
-  result := AValidatedFilename.IsValid;
-  if Result then
-    try
-      self.fBody.LoadFromFile(AValidatedFilename.Name);
-      result := true;
-    except
-      on e:exception do
-        begin
-           // What conditions do we want to handle???
-           self.fLastError := e.Message;
-           raise;
-        end;
-    end;
-
-end;
-
-function TCSVUpdater.LoadHeadersSuccessfully: boolean;
+function TCSVUpdater.HeaderLoadedOrLoadsSuccessfully: boolean;
 begin
   Result := FileLoaded and (fHeaders.Count>0);
 
@@ -123,6 +124,7 @@ begin
   end;
 
 end;
+
 
 procedure TCSVUpdater.setRowByIndex(AIndex: integer; const Value: string);
 begin
