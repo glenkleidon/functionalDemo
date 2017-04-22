@@ -20,6 +20,7 @@ uses System.Classes, System.SysUtils, System.Types,
   public
        Procedure Clear;
        function Validate(AFilename: string): string;
+       class operator Implicit(AFileName: string): TValidatedFilename;
   End;
 
   TCSVUpdater = class
@@ -69,20 +70,14 @@ begin
 end;
 
 function TCSVUpdater.getFileLoaded: boolean;
-var lFilename: TValidatedFilename;
 begin
-   result := (Self.fBody.Count>0) or
-             (
-               (lFilename.Validate(Self.fFileName)<>'') and
-                LoadFileSuccessfully(lFilename)
-              );
+   result := (Self.fBody.Count>0) or LoadFileSuccessfully(Self.Filename);
 end;
 
 function TCSVUpdater.getHeaders: string;
 begin
   if LoadHeadersSuccessfully then
       result := self.fHeaders.Text;
-
 end;
 
 function TCSVUpdater.getRowByIndex(AIndex: integer): string;
@@ -101,18 +96,19 @@ end;
 
 function TCSVUpdater.LoadFileSuccessfully(AValidatedFilename: TValidatedFilename): boolean;
 begin
-  result := false;
-  try
-    self.fBody.LoadFromFile(AValidatedFilename.Name);
-    result := true;
-  except
-    on e:exception do
-      begin
-         // What conditions do we want to handle???
-         self.fLastError := e.Message;
-         raise;
-      end;
-  end;
+  result := AValidatedFilename.IsValid;
+  if Result then
+    try
+      self.fBody.LoadFromFile(AValidatedFilename.Name);
+      result := true;
+    except
+      on e:exception do
+        begin
+           // What conditions do we want to handle???
+           self.fLastError := e.Message;
+           raise;
+        end;
+    end;
 
 end;
 
@@ -143,6 +139,11 @@ begin
   self.InvalidReason := 'No file name has been set.';
 end;
 
+class operator TValidatedFilename.Implicit(AFileName: string): TValidatedFilename;
+begin
+  Result.Clear;
+  Result.Validate(AFilename);
+end;
 
 function TValidatedFilename.Validate(AFilename: string): string;
 begin
