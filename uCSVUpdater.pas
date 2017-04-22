@@ -12,31 +12,38 @@ uses System.Classes, System.SysUtils, System.Types,
 
   type
 
-  TValidatedFilename = Class
-    Name: string;
-    InvalidReason: string;
-    class function isValid(AName: string) : boolean;
-    class function ValidFilename(AName: string) : TValidatedFilename;
+  TValidatedFilename = record
+  private
+       Name: string;
+       InvalidReason: string;
+       IsValid: boolean;
+  public
+       Procedure Clear;
+       Function Validate(AFilename: string): string;
   End;
+
 
   TCSVUpdater = class
     constructor Create(AFilename: string);
     destructor  Destroy; override;
   private
-    fFileName: string;
+    fFilename: string;
     fHeaders: TStringList;
     fBody : TStringList;
     fLastError: string;
-    function LoadFileSuccessfully(Filename: TValidatedFilename): boolean;
+    fValidatedFilename: TValidatedFilename;
+    function LoadFileSuccessfully(AFilename: TValidatedFilename): boolean;
     function LoadHeadersSuccessfully: boolean;
     function getRowByIndex(AIndex: integer): string;
     procedure setRowByIndex(AIndex: integer; const Value: string);
     function getRowByValue(AHeader: string; AValue: string): string;
     function getHeaders: string;
     function getFileLoaded: boolean;
+    function getValidatedFilename: string;
   public
     property FileLoaded : boolean read getFileLoaded;
-    property Filename: string read fFileName;
+    property Filename: string read FFilename;
+    property ValidatedFilename: string read getValidatedFilename;
     property Headers : string read getHeaders;
     property Row[AIndex : integer] : string read getRowbyIndex write setRowByIndex;
   end;
@@ -144,7 +151,8 @@ begin
   fBody.QuoteChar := '"';
   fBody.LineBreak := #13#10;
   fBody.Delimiter := '"';
-  fFilename := expandFileName(AFilename);
+  fValidatedFilename.Clear;
+  fFilename := ExpandFileName(AFilename);
 end;
 
 destructor TCSVUpdater.Destroy;
@@ -157,7 +165,10 @@ end;
 function TCSVUpdater.getFileLoaded: boolean;
 begin
    result := (Self.fBody.Count>0) or
-             LoadFileSuccessfully(Self.Filename);
+             (
+               (Self.ValidatedFilename<>'') and
+               (LoadFileSuccessfully(Self.fValidatedFilename))
+              );
 end;
 
 function TCSVUpdater.getHeaders: string;
@@ -181,22 +192,33 @@ begin
 
 end;
 
-function TCSVUpdater.LoadFileSuccessfully(Filename: string): boolean;
+function TCSVUpdater.getValidatedFilename: string;
 begin
-  result := false;
+  if self.fValidatedFilename.IsValid then
+     result := self.fValidatedFilename.Name
+  else
+     result := self.fValidatedFilename.validate(self.Filename);
+end;
+
+function TCSVUpdater.LoadFileSuccessfully(AFilename: TValidatedFilename): boolean;
+begin
+  result := AFilename.isValid;
   // Side Effect - This will not always return the same value.
   // Capture Error at the lowest level (except if it is really an exceptional)
-  try
-    self.fBody.LoadFromFile(Filename);
-    result := true;
-  except
-    on e:exception do
-      begin
-         // What conditions do we want to handle???
-         self.fLastError := e.Message;
-         raise;
-      end;
-  end;
+  if not result then
+     self.fLastError := AFileName.InvalidReason
+  else
+    try
+      self.fBody.LoadFromFile(AFilename.Name);
+      result := true;
+    except
+      on e:exception do
+        begin
+           // What conditions do we want to handle???
+           self.fLastError := e.Message;
+           raise;
+        end;
+    end;
 
 end;
 
@@ -219,24 +241,28 @@ end;
 
 { TValidatedFilename }
 
-class function TValidatedFilename.isValid(AName: string): boolean;
+procedure TValidatedFilename.Clear;
 begin
-  Result := false;
-  inValidReason := '';
-  if (AName='') then
-    invalidReason := 'No file name has been set.'
-  else if not(FileExists(AName, ALWAYS_FOLLOW_LINK_FILES)) then
-    invalidReason := format('File %s does not exist', [AName])
-  else Result := true;
+  self.Name := '';
+  self.isValid := false;
+  self.InvalidReason := 'No file name has been set.';
 end;
 
-class function TValidatedFilename.ValidFilename(AName: string): TValidatedFilename;
+{ TValidatedFilenameHelper }
+
+function TValidatedFilename.Validate(AFilename: string): string;
 begin
-  Result := nil;
-  if (isValid(AName))then
+  Result := '';
+  Clear;
+  Name := AFilename;
+  if (Name<>'') and
+     (FileExists(Name, ALWAYS_FOLLOW_LINK_FILES)) then
+     InvalidReason := format('File %s does not exist', [Name])
+  else
   begin
-    result := TValidatedFilename.Create;
-    Result.Name := AName;
+    IsValid := true;
+    InvalidReason := '';
+    Result := Name;
   end;
 
 end;

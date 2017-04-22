@@ -25,5 +25,6 @@ to worry about things it is not really interested in.
 
      (a). TValidated Filename class
      (b). TValidated FIlename as record
+     (c). TValidRow as class
 
 
