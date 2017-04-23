@@ -7,8 +7,8 @@ program QuickDemo;
 uses
   System.SysUtils,
   uQuickDemo in 'uQuickDemo.pas',
-  uRaiseOnInvalidParameter in '..\componentlibrary\uRaiseOnInvalidParameter.pas';
-
+  uRaiseOnInvalidParameter in '..\componentlibrary\uRaiseOnInvalidParameter.pas',
+  Functional.Value;
   type
 
    [TRaiseOnCastFailure('Hello ADUG - Invalid Integer %d. Value must be >1')]
@@ -38,6 +38,7 @@ Function EscapeTextForHTML(AText: string): string;
 
 var XInt: TIntegerGTOne;
     XInt2: Cardinal;
+    XInt3: Cardinal;
 
     XSideEffect: TMyClass;
 
@@ -87,6 +88,22 @@ begin
     Writeln(format('SideEffect is "%s"', [XSideEffect.SideEffect]));
     XSideEffect.CalculateSum(12,8);
     Writeln(format('After Calling Calculate Sum(12,8) - SideEffect is "%s"', [XSideEffect.SideEffect]));
+    Writeln(StringOfChar('=',80));
+
+
+    Writeln('Side Effect');
+    Writeln(StringOfChar('-',11));
+    XInt3 := HonestSquare(51).Value;
+    Writeln(format('Square of 51 is %u (just lucky - should have checked!)', [XInt3]));
+    if HonestSquare(65536).HasValue then writeln('Unexpected result in honest Square')
+      else writeln('Honest Square told me It couldnt be done');
+    try
+      XInt3 := HonestSquare(1).Value;
+      writeln(format('Square of 1 returned %d',[XInt3]));
+    Except
+       on e:exception do Writeln('Honest Square raised exception: '#13#10'  '+ e.Message);
+    end;
+
     Writeln(StringOfChar('=',80));
 
     Readln;

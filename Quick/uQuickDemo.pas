@@ -1,8 +1,8 @@
 unit uQuickDemo;
 
 interface
-  uses System.Classes, System.SysUtils, uRaiseOnInvalidParameter;
-
+  uses System.Classes, System.SysUtils, uRaiseOnInvalidParameter,
+                       Functional.Value;
   type
     TMyClass = Class
     private
@@ -11,13 +11,14 @@ interface
       property SideEffect : string read fSideEffect write fSideEffect;
       function CalculateSum(AInteger1, AInteger2 : integer): integer;
     End;
-    
+
     [TRaiseOnCastFailure('Invalid Integer %d. Value must be >1')]
     TIntegerGTOne = Record
       IntValue: Cardinal;
     public
       function isValid(AInt: integer) : boolean;
-      class operator Implicit(AInt : Integer): TIntegerGTOne;
+      class operator Implicit(AInt : Integer): TIntegerGTOne; overload;
+      //class operator Implicit(AIntegerGTOne:TIntegerGTOne): Cardinal; overload;
     End;
 
     TIntegerGTOneBase = Class
@@ -29,9 +30,25 @@ interface
       Constructor Create(AInt: Integer);
       Class function New(AInt: Integer): Cardinal;
     End;
-    
+
+    TMaybeCardinal = TValue<Cardinal>;
+
+
+function HonestSquare(AGreaterThanOne: TIntegerGTOne):TMaybeCardinal;
 
 implementation
+
+function HonestSquare(AGreaterThanOne: TIntegerGTOne):TMaybeCardinal;
+var lRes : Cardinal;
+begin
+   if (AGreaterThanOne.IntValue>65535) then Result.SetState(vsNothing)
+   else
+   begin
+     lRes :=  AGreaterThanOne.IntValue*AGreaterThanOne.IntValue;
+     result := lRes;
+   end;
+end;
+
 { TMyClass }
 
 function TMyClass.CalculateSum(AInteger1, AInteger2: integer): integer;
@@ -56,6 +73,13 @@ begin
   if lFmtString<>'' then raise Exception.Createfmt(lFmtString, [Aint]);
 end;
 
+{
+class operator TIntegerGTOne.Implicit(AIntegerGTOne:TIntegerGTOne): Cardinal;
+begin
+   Result := AIntegerGTOne.IntValue;
+end;
+}
+
 function TIntegerGTOne.isValid(AInt: Integer): boolean;
 begin
   result := (AInt>1);
@@ -67,8 +91,7 @@ begin
 end;
 
 class function TIntegerGTOneBase.New(AInt: Integer): Cardinal;
-var lFmtString: string;
-    lGTOne: TIntegerGTOneBase;
+var lGTOne: TIntegerGTOneBase;
 begin
    lGTOne := Self.Create(AInt);
    try
@@ -90,7 +113,7 @@ begin
        exit;
      end;
      // Do I need to Raise??
-     
+
     lFmtString := ExtractOneGTErrorMsg(self);
     if lFmtString<>'' then raise Exception.Createfmt(lFmtString, [Aint])
 end;
