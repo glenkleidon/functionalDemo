@@ -14,12 +14,14 @@ uses System.Classes, System.SysUtils, System.Types,
 
   TValidatedFilename = record
   private
-       Name: string;
+       FName: string;
        InvalidReason: string;
        IsValid: boolean;
+       function getName: string;
   public
        Procedure Clear;
        function Validate(AFilename: string): string;
+       property Name : string read getName;
        class operator Implicit(AFileName: string): TValidatedFilename;
   End;
 
@@ -76,13 +78,9 @@ end;
 
 function TCSVUpdater.FileLoadedOrLoadsSuccessfully(AFilename: TValidatedFilename): boolean;
 begin
-  Result := (Self.fBody.Count>0);
-  if Result then exit;
-
-  if (AFilename.IsValid) then
+  if ( Self.fBody.Count=0 ) and ( AFilename.IsValid ) then
     try
       self.fBody.LoadFromFile(AFilename.Name);
-      result := true;
     except
       on e:exception do
         begin
@@ -91,18 +89,19 @@ begin
            raise;
         end;
     end;
-
+  Result := (Self.fBody.Count>0);
 end;
 
 function TCSVUpdater.getHeaders: string;
 begin
+  Result := '';
   if HeaderLoadedOrLoadsSuccessfully then result := self.fHeaders.Text;
 end;
 
 function TCSVUpdater.getRowByIndex(AIndex: integer): string;
 begin
   result := '';
-  if (AIndex>1) then raise Exception.Create('Row must be >= 1'); // Truly an exception
+  if (AIndex<1) then raise Exception.Create('Row must be >= 1'); // Truly an exception
 
   if (self.FileLoaded) and (Aindex<=self.fBody.Count) then
       result := self.fBody[AIndex-1];
@@ -115,14 +114,12 @@ end;
 
 function TCSVUpdater.HeaderLoadedOrLoadsSuccessfully: boolean;
 begin
-  Result := FileLoaded and (fHeaders.Count>0);
-
-  if (not Result) and (Self.fBody.Count>0) then
+  if ( (fHeaders.Count=0) ) and ( FileLoaded ) then
   begin
-    self.fHeaders.DelimitedText := self.fBody[0];
-    result := self.fHeaders.Count>0;
+    self.FHeaders.DelimitedText := self.fBody[0];
+    self.FBody.Delete(0);
   end;
-
+  result := self.fHeaders.Count>0;
 end;
 
 
@@ -136,7 +133,7 @@ end;
 
 procedure TValidatedFilename.Clear;
 begin
-  self.Name := '';
+  self.FName := '';
   self.isValid := false;
   self.InvalidReason := 'No file name has been set.';
 end;
@@ -147,14 +144,20 @@ begin
   Result.Validate(AFilename);
 end;
 
+function TValidatedFilename.getName: string;
+begin
+  if isValid then Result:= FName
+  else Result := Validate(Fname);
+end;
+
 function TValidatedFilename.Validate(AFilename: string): string;
 begin
   Result := '';
   Clear;
-  Name := AFilename;
-  if (Name<>'') and
-     not (FileExists(Name, ALWAYS_FOLLOW_LINK_FILES)) then
-     InvalidReason := format('File %s does not exist', [Name])
+  FName := AFilename;
+  if (FName<>'') and
+     not (FileExists(FName, ALWAYS_FOLLOW_LINK_FILES)) then
+     InvalidReason := format('File %s does not exist', [FName])
   else
   begin
     IsValid := true;
